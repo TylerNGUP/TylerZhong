@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>兰芳华专属互动表白程序</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#E94560',
+                        secondary: '#1A1A2E',
+                        accent: '#FFD700',
+                        light: '#F7F7F9',
+                        dark: '#0F3460'
+                    },
+                    fontFamily: {
+                        romantic: ['"Dancing Script"', 'cursive'],
+                        main: ['"Montserrat"', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            }
+            .text-shadow-lg {
+                text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
+            }
+            .animate-float {
+                animation: float 6s ease-in-out infinite;
+            }
+            .animate-float-slow {
+                animation: float 8s ease-in-out infinite;
+            }
+            .animate-float-fast {
+                animation: float 4s ease-in-out infinite;
+            }
+            .animate-pulse-slow {
+                animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            .ring-piece {
+                opacity: 0;
+                transition: opacity 1s ease-in-out;
+            }
+            .ring-piece.visible {
+                opacity: 1;
+            }
+            .firework {
+                position: absolute;
+                border-radius: 50%;
+                pointer-events: none;
+                animation: explode 1s forwards;
+            }
+            .progress-bar {
+                transition: width 0.5s ease-in-out;
+            }
+            .map-point {
+                transition: all 1s ease-in-out;
+            }
+            .map-line {
+                stroke-dasharray: 1000;
+                stroke-dashoffset: 1000;
+                animation: dash 3s linear forwards;
+            }
+            @keyframes float {
+                0% { transform: translateY(0px); }
+                50% { transform: translateY(-20px); }
+                100% { transform: translateY(0px); }
+            }
+            @keyframes explode {
+                0% { transform: scale(0); opacity: 1; }
+                100% { transform: scale(1); opacity: 0; }
+            }
+            @keyframes dash {
+                to {
+                    stroke-dashoffset: 0;
+                }
+            }
+            .spin-wheel {
+                transition: transform 5s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-secondary to-dark text-light min-h-screen overflow-x-hidden font-main relative">
+    <!-- 背景音乐控制 -->
+    <div class="fixed top-4 right-4 z-50 bg-black/50 p-2 rounded-full backdrop-blur-sm">
+        <button id="musicToggle" class="text-light hover:text-accent transition-colors">
+            <i class="fa fa-music text-xl"></i>
+        </button>
+    </div>
+
+    <!-- 进度条 -->
+    <div class="fixed top-0 left-0 w-full h-1 bg-gray-700 z-40">
+        <div id="progressBar" class="progress-bar h-full bg-primary w-0"></div>
+    </div>
+
+    <!-- 戒指拼图 (固定位置) -->
+    <div class="fixed bottom-6 right-6 w-20 h-20 md:w-28 md:h-28 z-30">
+        <div class="relative w-full h-full">
+            <!-- 戒指碎片 - 共14块，随关卡解锁 -->
+            <div id="ringPiece1" class="ring-piece absolute inset-0 bg-accent rounded-full clip-path-polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%) opacity-30"></div>
+            <div id="ringPiece2" class="ring-piece absolute inset-1 bg-secondary rounded-full clip-path-polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)"></div>
+            <div id="ringPiece3" class="ring-piece absolute inset-0">
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 md:w-8 md:h-8 bg-primary rounded-full"></div>
+            </div>
+            <!-- 更多碎片通过JS动态添加样式 -->
+        </div>
+    </div>
+
+    <!-- 浮动猫狗动画 -->
+    <div id="floatingAnimals" class="fixed inset-0 pointer-events-none z-20">
+        <!-- 动态生成 -->
+    </div>
+
+    <!-- 主容器 -->
+    <div class="container mx-auto px-4 py-12 relative z-10">
+        <!-- 标题屏幕 -->
+        <div id="titleScreen" class="flex flex-col items-center justify-center min-h-[80vh] text-center">
+            <h1 class="text-[clamp(2.5rem,8vw,5rem)] font-romantic text-primary mb-6 animate-pulse-slow">
+                致 兰芳华
+            </h1>
+            <p class="text-[clamp(1rem,3vw,1.5rem)] mb-10 max-w-2xl mx-auto">
+                一个关于我们的故事，一段即将展开的旅程
+            </p>
+            <button id="startBtn" class="bg-primary hover:bg-primary/80 text-white font-bold py-3 px-8 rounded-full text-lg transform transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+                开始我们的故事 <i class="fa fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+
+        <!-- 关卡容器 (默认隐藏) -->
+        <div id="levelsContainer" class="hidden">
+            <!-- 关卡1 -->
+            <div class="level" id="level1">
+                <div class="flex flex-col items-center text-center">
+                    <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-romantic text-accent mb-8">初识</h2>
+                    <div class="w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8">
+                        <p class="text-lg md:text-xl mb-6">
+                            还记得我们第一次真正意义上的相遇吗？
+                            那是一个普通的日子，但因为有你，变得不再普通。
+                        </p>
+                        <div class="my-8">
+                            <img src="https://picsum.photos/id/292/800/400" alt="初次相遇的场景" class="rounded-lg w-full h-auto shadow-xl">
+                        </div>
+                    </div>
+                    <button class="nextLevelBtn bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded-full transform transition hover:scale-105">
+                        继续 <i class="fa fa-heart ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 关卡2 -->
+            <div class="level hidden" id="level2">
+                <div class="flex flex-col items-center text-center">
+                    <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-romantic text-accent mb-8">第一次约定</h2>
+                    <div class="w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8">
+                        <p class="text-lg md:text-xl mb-6">
+                            从陌生到熟悉，只需要一个勇敢的开始。
+                            我还记得邀请你时的紧张，和收到你肯定答复时的欣喜。
+                        </p>
+                        <div class="flex justify-center my-6">
+                            <div class="inline-block bg-white/10 p-4 rounded-lg">
+                                <p class="text-accent font-romantic text-2xl">"你愿意和我一起去看场电影吗？"</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="nextLevelBtn bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded-full transform transition hover:scale-105">
+                        继续 <i class="fa fa-heart ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 关卡3 - 2025.6.21火锅电影日 -->
+            <div class="level hidden" id="level3">
+                <div class="flex flex-col items-center text-center">
+                    <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-romantic text-accent mb-4">2025.6.21</h2>
+                    <p class="text-xl text-accent/80 mb-8">火锅电影日</p>
+                    
+                    <div class="w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8">
+                        <p class="text-lg md:text-xl mb-6">
+                            那一天，我们共享了热腾腾的火锅，就像我们逐渐升温的关系。
+                            辛辣的味道，映红了脸颊，也拉近了距离。
+                        </p>
+                        <div class="my-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <img src="https://picsum.photos/id/292/400/300" alt="火锅" class="rounded-lg w-full h-auto shadow-lg">
+                            <img src="https://picsum.photos/id/96/400/300" alt="电影院" class="rounded-lg w-full h-auto shadow-lg">
+                        </div>
+                        <p class="text-lg md:text-xl mt-6">
+                            电影的情节我已经记不太清了，只记得身边你的侧脸，和偶尔相触时的心跳加速。
+                        </p>
+                    </div>
+                    <button class="nextLevelBtn bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded-full transform transition hover:scale-105">
+                        继续 <i class="fa fa-heart ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 关卡4 -->
+            <div class="level hidden" id="level4">
+                <div class="flex flex-col items-center text-center">
+                    <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-romantic text-accent mb-8">思念</h2>
+                    <div class="w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8">
+                        <p class="text-lg md:text-xl mb-6">
+                            第一次见面后，你的笑容就常常出现在我的脑海里。
+                            我们开始频繁地聊天，分享彼此的生活点滴。
+                        </p>
+                        <div class="my-8 relative">
+                            <div class="absolute inset-0 bg-primary/20 rounded-lg transform rotate-3"></div>
+                            <div class="absolute inset-0 bg-primary/20 rounded-lg transform -rotate-3"></div>
+                            <div class="relative bg-secondary p-6 rounded-lg">
+                                <div class="flex flex-col space-y-4">
+                                    <div class="flex items-start">
+                                        <div class="bg-primary/80 rounded-full p-2 mr-3">
+                                            <i class="fa fa-user text-white"></i>
+                                        </div>
+                                        <div class="bg-dark rounded-lg p-3 max-w-[70%]">
+                                            <p>今天天气真好，你那边呢？</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start justify-end">
+                                        <div class="bg-primary rounded-lg p-3 max-w-[70%]">
+                                            <p>我这边也是大晴天呢！刚看到一只很可爱的小猫~</p>
+                                        </div>
+                                        <div class="bg-accent/80 rounded-full p-2 ml-3">
+                                            <i class="fa fa-user text-dark"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="nextLevelBtn bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded-full transform transition hover:scale-105">
+                        继续 <i class="fa fa-heart ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 关卡5 - 地理元素：广州→赣州地图动画 -->
+            <div class="level hidden" id="level5">
+                <div class="flex flex-col items-center text-center">
+                    <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-romantic text-accent mb-8">奔赴</h2>
+                    <div class="w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8">
+                        <p class="text-lg md:text-xl mb-6">
+                            距离无法阻挡思念，为了再次见到你，跨越城市也在所不惜。
+                        </p>
+                        <div class="my-6 relative h-80 bg-dark rounded-lg overflow-hidden">
+                            <!-- 简易地图 -->
+                            <svg class="w-full h-full" viewBox="0 0 800 400">
+                                <!-- 地图背景 -->
+                                <rect x="0" y="0" width="800" height="400" fill="#1A1A2E" />
+                                <!-- 抽象道路/路线 -->
+                                <path d="M200,150 Q400,50 600,250" fill="none" stroke="#E94560" stroke-width="2" class="map-line" />
+                                <!-- 城市标记 -->
+                                <circle id="gzPoint" class="map-point" cx="200" cy="150" r="8" fill="#E94560" />
+                                <text x="170" y="140" fill="white">广州</text>
+                                <circle id="gzPoint" class="map-point" cx="600" cy="250" r="8" fill="#FFD700" />
+                                <text x="570" y="240" fill="white">赣州</text>
+                                <!-- 移动的点表示旅程 -->
+                                <circle id="travelPoint" cx="200" cy="150" r="6" fill="#FFD700" class="hidden" />
+                            </svg>
+                            <div id="mapMessage" class="absolute bottom-4 left-0 right-0 text-center text-white/80 hidden">
+                                跨越山川湖海，只为与你相见
+                            </div>
+                        </div>
+                    </div>
+                    <button class="nextLevelBtn bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded-full transform transition hover:scale-105">
+                        继续 <i class="fa fa-heart ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 关卡6 -->
+            <div class="level hidden" id="level6">
+                <div class="flex flex-col items-center text-center">
+                    <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-romantic text-accent mb-8">期待</h2>
+                    <div class="w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8">
+                        <p class="text-lg md:text-xl mb-6">
+                            第二次见面的约定，让每一天都充满了期待。
+                            我开始想象我们会去哪里，会聊些什么，你的笑容会是怎样的。
+                        </p>
+                        <div class="my-8">
+                            <div class="relative inline-block">
+                                <img src="https://picsum.photos/id/1039/800/400" alt="期待的心情" class="rounded-lg w-full h-auto shadow-xl">
+                                <div class="absolute inset-0 bg-gradient-to-t from-secondary/80 to-transparent flex items-end">
+                                    <p class="text-white text-xl p-6 text-shadow">倒计时开始...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="nextLevelBtn bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded-full transform transition hover:scale-105">
+                        继续 <i class="fa fa-heart ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 关卡7 - 2025.7.12浮桥夜谈 -->
+            <div class="level hidden" id="level7">
+                <div class="flex flex-col items-center text-center">
+                    <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-romantic text-accent mb-4">2025.7.12</h2>
+                    <p class="text-xl text-accent/80 mb-8">浮桥夜谈</p>
+                    
+                    <div class="w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8">
+                        <p class="text-lg md:text-xl mb-6">
+                            夜晚的浮桥，微风轻拂，星光闪烁。
+                            我们聊了很多，从生活琐事到人生理想，时间仿佛静止了。
+                        </p>
+                        <div class="my-6" id="bridgeImageContainer">
+                            <img src="https://picsum.photos/id/134/800/400" alt="夜晚的浮桥" class="rounded-lg w-full h-auto shadow-xl cursor-pointer transition-transform hover:scale-[1.02]">
+                            <p class="text-sm text-light/70 mt-2">双击图片，重温当时的对话</p>
+                        </div>
+                        <p class="text-lg md:text-xl mt-6">
+                            那一刻，我知道，你就是我想要珍惜的人。
+                        </p>
+                    </div>
+                    <button class="nextLevelBtn bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded-full transform transition hover:scale-105">
+                        继续 <i class="fa fa-heart ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 关卡8 -->
+            <div class="level hidden" id="level8">
+                <div class="flex flex-col items-center text-center">
+                    <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-romantic text-accent mb-8">心动瞬间</h2>
+                    <div class="w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8">
+                        <p class="text-lg md:text-xl mb-6">
+                            回忆我们相处的点点滴滴，总有一些瞬间让我心动不已。
+                        </p>
+                        <div class="my-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="bg-dark/50 rounded-lg p-3 transform transition hover:scale-105">
+                                <i class="fa fa-smile-o text-4xl text-accent mb-2"></i>
+                                <p class="text-sm">你的笑容</p>
+                            </div>
+                            <div class="bg-dark/50 rounded-lg p-3 transform transition hover:scale-105">
+                                <i class="fa fa-comment-o text-4xl text-accent mb-2"></i>
+                                <p class="text-sm">你的话语</p>
+                            </div>
+                            <div class="bg-dark/50 rounded-lg p-3 transform transition hover:scale-105">
+                                <i class="fa fa-laugh-beam text-4xl text-accent mb-2"></i>
+                                <p class="text-sm">你的笑声</p>
+                            </div>
+                            <div class="bg-dark/50 rounded-lg p-3 transform transition hover:scale-105">
+                                <i class="fa fa-heart-o text-4xl text-accent mb-2"></i>
+                                <p class="text-sm">你的善良</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="nextLevelBtn bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded-full transform transition hover:scale-105">
+                        继续 <i class="fa fa-heart ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 关卡9 -->
+            <div class="level hidden" id="level9">
+                <div class="flex flex-col items-center text-center">
+                    <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-romantic text-accent mb-8">共同的喜好</h2>
+                    <div class="w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8">
+                        <p class="text-lg md:text-xl mb-6">
+                            发现我们有那么多共同点，是一件多么奇妙的事情。
+                            这些共同的喜好，就像一条条纽带，将我们紧紧相连。
+                        </p>
+                        <div class="my-6 flex flex-wrap justify-center gap-4">
+                            <span class="bg-primary/20 text-white px-4 py-2 rounded-full text-sm md:text-base">电影</span>
+                            <span class="bg-primary/20 text-white px-4 py-2 rounded-full text-sm md:text-base">美食</span>
+                            <span class="bg-primary/20 text-white px-4 py-2 rounded-full text-sm md:text-base">旅行</span>
+                            <span class="bg-primary/20 text-white px-4 py-2 rounded-full text-sm md:text-base">音乐</span>
+                            <span class="bg-primary/20 text-white px-4 py-2 rounded-full text-sm md:text-base">小动物</span>
+                            <span class="bg-primary/20 text-white px-4 py-2 rounded-full text-sm md:text-base">阅读</span>
+                        </div>
+                    </div>
+                    <button class="nextLevelBtn bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded-full transform transition hover:scale-105">
+                        继续 <i class="fa fa-heart ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 关卡10 - 烟花场景 -->
+            <div class="level hidden" id="level10">
+                <div class="flex flex-col items-center text-center">
+                    <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-romantic text-accent mb-8">绚丽时刻</h2>
+                    <div class="w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8">
+                        <p class="text-lg md:text-xl mb-6">
+                            有些美好，就像烟花一样绚烂。
+                            点击下方按钮，让我们一起欣赏这美丽的瞬间。
+                        </p>
+                        <div class="my-6 relative h-64 bg-dark rounded-lg overflow-hidden">
+                            <div id="fireworksContainer" class="absolute inset-0">
+                                <!-- 烟花将在这里动态生成 -->
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <button id="launchFireworks" class="bg-accent text-dark font-bold py-3 px-8 rounded-full transform transition hover:scale-105">
+                                        绽放烟花 <i class="fa fa-star ml-1"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="nextLevelBtn bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded-full transform transition hover:scale-105 hidden">
+                        继续 <i class="fa fa-heart ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 关卡11 -->
+            <div class="level hidden" id="level11">
+                <div class="flex flex-col items-center text-center">
+                    <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-romantic text-accent mb-8">未来的憧憬</h2>
+                    <div class="w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8">
+                        <p class="text-lg md:text-xl mb-6">
+                            想到未来能有你陪伴，我的心中就充满了期待。
+                            我们会一起经历更多美好，创造更多回忆。
+                        </p>
+                        <div class="my-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-dark/50 rounded-lg p-4">
+                                <img src="https://picsum.photos/id/1061/300/200" alt="一起旅行" class="rounded w-full h-32 object-cover mb-3">
+                                <p class="text-sm">一起去旅行</p>
+                            </div>
+                            <div class="bg-dark/50 rounded-lg p-4">
+                                <img src="https://picsum.photos/id/292/300/200" alt="一起吃饭" class="rounded w-full h-32 object-cover mb-3">
+                                <p class="text-sm">一起品尝美食</p>
+                            </div>
+                            <div class="bg-dark/50 rounded-lg p-4">
+                                <img src="https://picsum.photos/id/1059/300/200" alt="一起看风景" class="rounded w-full h-32 object-cover mb-3">
+                                <p class="text-sm">一起看遍风景</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="nextLevelBtn bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded-full transform transition hover:scale-105">
+                        继续 <i class="fa fa-heart ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 关卡12 - 时间密码 -->
+            <div class="level hidden" id="level12">
+                <div class="flex flex-col items-center text-center">
+                    <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-romantic text-accent mb-8">重要的日子</h2>
+                    <div class="w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8">
+                        <p class="text-lg md:text-xl mb-6">
+                            有些日期对我们来说意义非凡，
+                            请输入我们第一次见面的日期（格式：YYYYMMDD）
+                        </p>
+                        <div class="my-6">
+                            <div id="countdown" class="text-4xl font-bold text-accent mb-6 hidden">
+                                <span id="countdownNumber">3</span>
+                            </div>
+                            <input type="text" id="dateInput" class="bg-dark border-2 border-primary rounded-lg px-4 py-3 text-center text-lg w-48 md:w-64 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="输入日期">
+                            <p id="dateError" class="text-primary mt-3 hidden">日期不正确，请再试一次</p>
+                        </div>
+                    </div>
+                    <button class="nextLevelBtn bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded-full transform transition hover:scale-105 hidden">
+                        继续 <i class="fa fa-heart ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 关卡13 - 命运转盘 -->
+            <div class="level hidden" id="level13">
+                <div class="flex flex-col items-center text-center">
+                    <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-romantic text-accent mb-8">命运的转盘</h2>
+                    <div class="w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8">
+                        <p class="text-lg md:text-xl mb-6">
+                            转动命运的转盘，看看它会带给我们什么惊喜。
+                        </p>
+                        <div class="my-8 flex justify-center">
+                            <div class="relative w-64 h-64 md:w-80 md:h-80">
+                                <!-- 转盘 -->
+                                <div id="wheel" class="spin-wheel w-full h-full rounded-full overflow-hidden border-8 border-accent relative">
+                                    <!-- 转盘分区 -->
+                                    <div class="absolute inset-0" style="transform: rotate(0deg);">
+                                        <div class="absolute inset-0 flex items-center justify-center" style="transform: rotate(45deg);">
+                                            <div class="absolute w-full h-1 bg-dark top-1/2 transform -translate-y-1/2"></div>
+                                        </div>
+                                        <div class="absolute inset-0 flex items-center justify-center" style="transform: rotate(90deg);">
+                                            <div class="absolute w-full h-1 bg-dark top-1/2 transform -translate-y-1/2"></div>
+                                        </div>
+                                        <div class="absolute inset-0 flex items-center justify-center" style="transform: rotate(135deg);">
+                                            <div class="absolute w-full h-1 bg-dark top-1/2 transform -translate-y-1/2"></div>
+                                        </div>
+                                        <div class="absolute inset-0 flex items-center justify-center" style="transform: rotate(180deg);">
+                                            <div class="absolute w-full h-1 bg-dark top-1/2 transform -translate-y-1/2"></div>
+                                        </div>
+                                        <div class="absolute inset-0 flex items-center justify-center" style="transform: rotate(225deg);">
+                                            <div class="absolute w-full h-1 bg-dark top-1/2 transform -translate-y-1/2"></div>
+                                        </div>
+                                        <div class="absolute inset-0 flex items-center justify-center" style="transform: rotate(270deg);">
+                                            <div class="absolute w-full h-1 bg-dark top-1/2 transform -translate-y-1/2"></div>
+                                        </div>
+                                        <div class="absolute inset-0 flex items-center justify-center" style="transform: rotate(315deg);">
+                                            <div class="absolute w-full h-1 bg-dark top-1/2 transform -translate-y-1/2"></div>
+                                        </div>
+                                        
+                                        <!-- 转盘内容 -->
+                                        <div class="absolute top-0 left-0 w-full h-full">
+                                            <div class="absolute top-0 left-1/2 w-1/2 h-1/2 bg-primary/80 flex items-center justify-center transform -translate-x-1/2" style="clip-path: polygon(0 0, 100% 0, 100% 100%);">
+                                                <p class="text-white font-bold transform rotate(45deg) translate-x-8">小狗</p>
+                                            </div>
+                                            <div class="absolute top-0 left-0 w-1/2 h-1/2 bg-dark/80 flex items-center justify-center transform -translate-x-1/2" style="clip-path: polygon(0 0, 100% 0, 0 100%);">
+                                                <p class="text-white font-bold transform -rotate(45deg) -translate-x-8">小猫</p>
+                                            </div>
+                                            <div class="absolute bottom-0 left-0 w-1/2 h-1/2 bg-primary/60 flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2" style="clip-path: polygon(0 0, 0 100%, 100% 100%);">
+                                                <p class="text-white font-bold transform rotate(45deg) -translate-y-8">书籍</p>
+                                            </div>
+                                            <div class="absolute bottom-0 left-1/2 w-1/2 h-1/2 bg-dark/60 flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2" style="clip-path: polygon(100% 0, 0 100%, 100% 100%);">
+                                                <p class="text-white font-bold transform -rotate(45deg) translate-y-8">电影票</p>
+                                            </div>
+                                            <div class="absolute top-1/2 left-0 w-1/2 h-1/2 bg-primary/40 flex items-center justify-center transform -translate-y-1/2" style="clip-path: polygon(0 0, 0 100%, 100% 100%);">
+                                                <p class="text-white font-bold transform -rotate(45deg) -translate-x-8">巧克力</p>
+                                            </div>
+                                            <div class="absolute top-1/2 right-0 w-1/2 h-1/2 bg-dark/40 flex items-center justify-center transform -translate-y-1/2" style="clip-path: polygon(100% 0, 100% 100%, 0 100%);">
+                                                <p class="text-white font-bold transform rotate(45deg) translate-x-8">鲜花</p>
+                                            </div>
+                                            <div class="absolute top-0 right-0 w-1/2 h-full bg-primary/20 flex items-center justify-center transform -translate-x-1/2" style="clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);">
+                                                <p class="text-white font-bold transform rotate(90deg) translate-x-16">戒指</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 转盘指针 -->
+                                <div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+                                    <div class="w-6 h-12 bg-accent clip-path-polygon(50% 0%, 0% 100%, 100% 100%)"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="spinBtn" class="bg-accent text-dark font-bold py-3 px-8 rounded-full transform transition hover:scale-105 mt-4">
+                            转动转盘 <i class="fa fa-refresh ml-1"></i>
+                        </button>
+                        <div id="ringResult" class="hidden mt-8 p-6 bg-primary/20 rounded-lg">
+                            <img src="https://picsum.photos/id/152/200/200" alt="戒指" class="w-32 h-32 mx-auto rounded-full object-cover border-4 border-accent mb-4">
+                            <p class="text-2xl font-romantic text-accent">即将属于你</p>
+                        </div>
+                    </div>
+                    <button class="nextLevelBtn bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded-full transform transition hover:scale-105 hidden">
+                        继续 <i class="fa fa-heart ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 关卡14 - 表白信 -->
+            <div class="level hidden" id="level14">
+                <div class="flex flex-col items-center text-center">
+                    <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-romantic text-accent mb-8">致兰芳华</h2>
+                    
+                    <div id="confession1" class="w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8">
+                        <p class="text-lg md:text-xl mb-6 leading-relaxed">
+                            兰芳华，从6月21日那顿火锅开始，我的生活似乎变得不一样了。
+                            那天的烟火气，映照着你的笑容，也温暖了我的心。
+                        </p>
+                        <p class="text-lg md:text-xl mb-6 leading-relaxed">
+                            7月12日的浮桥夜谈，微风轻拂，星光闪烁，我们聊了很多很多。
+                            那一刻，我就知道，你是我想要珍惜的人。
+                        </p>
+                        <p class="text-lg md:text-xl mb-6 leading-relaxed">
+                            这段时间的相处，每一个瞬间都让我心动。
+                            你的笑容，你的声音，你善良的心灵，都深深吸引着我。
+                        </p>
+                        <p class="text-lg md:text-xl mb-10 leading-relaxed font-romantic text-accent">
+                            你愿意让我们的故事进入新篇章吗？
+                        </p>
+                        <button id="nextConfession" class="bg-primary hover:bg-primary/80 text-white font-bold py-3 px-8 rounded-full transform transition hover:scale-105">
+                            继续 <i class="fa fa-heart ml-1"></i>
+                        </button>
+                    </div>
+                    
+                    <div id="confession2" class="w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8 hidden">
+                        <p class="text-xl md:text-2xl mb-10 leading-relaxed font-romantic text-accent">
+                            请转身面对你身边的朋友，<br>
+                            他将亲口说出最重要的话
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 音频元素 -->
+    <audio id="backgroundMusic" loop>
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+     您的浏览器不支持音频播放。
+    </audio>
+    
+    <audio id="dialogAudio" preload="none">
+        <source src="" type="audio/mpeg">
+     您的浏览器不支持音频播放。
+    </audio>
+
+    <script>
+        // 全局变量
+        let currentLevel = 0;
+        const totalLevels = 14;
+        const correctDate = "20250621"; // 正确的日期密码
+        
+        // DOM元素
+        const titleScreen = document.getElementById('titleScreen');
+        const levelsContainer = document.getElementById('levelsContainer');
+        const startBtn = document.getElementById('startBtn');
+        const nextLevelBtns = document.querySelectorAll('.nextLevelBtn');
+        const progressBar = document.getElementById('progressBar');
+        const musicToggle = document.getElementById('musicToggle');
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const dialogAudio = document.getElementById('dialogAudio');
+        const bridgeImageContainer = document.getElementById('bridgeImageContainer');
+        const launchFireworksBtn = document.getElementById('launchFireworks');
+        const fireworksContainer = document.getElementById('fireworksContainer');
+        const dateInput = document.getElementById('dateInput');
+        const dateError = document.getElementById('dateError');
+        const countdown = document.getElementById('countdown');
+        const countdownNumber = document.getElementById('countdownNumber');
+        const spinBtn = document.getElementById('spinBtn');
+        const wheel = document.getElementById('wheel');
+        const ringResult = document.getElementById('ringResult');
+        const nextConfessionBtn = document.getElementById('nextConfession');
+        const confession1 = document.getElementById('confession1');
+        const confession2 = document.getElementById('confession2');
+        const travelPoint = document.getElementById('travelPoint');
+        const mapMessage = document.getElementById('mapMessage');
+        
+        // 初始化
+        function init() {
+            // 检查本地存储的进度
+            const savedLevel = localStorage.getItem('confessionLevel');
+            if (savedLevel) {
+                currentLevel = parseInt(savedLevel);
+                if (currentLevel > 0) {
+                    showLevel(currentLevel);
+                }
+            }
+            
+            // 生成浮动的猫狗动画
+            generateFloatingAnimals();
+            
+            // 事件监听
+            startBtn.addEventListener('click', startGame);
+            
+            nextLevelBtns.forEach(btn => {
+                btn.addEventListener('click', goToNextLevel);
+            });
+            
+            musicToggle.addEventListener('click', toggleMusic);
+            
+            // 浮桥图片双击事件 - 隐藏彩蛋
+            bridgeImageContainer.addEventListener('dblclick', playDialogAudio);
+            
+            // 烟花按钮事件
+            launchFireworksBtn.addEventListener('click', launchFireworks);
+            
+            // 日期输入事件
+            dateInput.addEventListener('input', checkDateInput);
+            
+            // 转盘事件
+            spinBtn.addEventListener('click', spinWheel);
+            
+            // 表白信下一步
+            nextConfessionBtn.addEventListener('click', showFinalConfession);
+        }
+        
+        // 开始游戏
+        function startGame() {
+            titleScreen.classList.add('hidden');
+            levelsContainer.classList.remove('hidden');
+            currentLevel = 1;
+            updateProgress();
+            showLevel(1);
+            saveProgress();
+            
+            // 自动播放音乐
+            backgroundMusic.play().catch(e => console.log("音乐自动播放失败，用户交互后可手动开启"));
+        }
+        
+        // 显示指定关卡
+        function showLevel(levelNumber) {
+            // 隐藏所有关卡
+            document.querySelectorAll('.level').forEach(level => {
+                level.classList.add('hidden');
+            });
+            
+            // 显示当前关卡
+            const currentLevelEl = document.getElementById(`level${levelNumber}`);
+            if (currentLevelEl) {
+                currentLevelEl.classList.remove('hidden');
+                
+                // 如果是第5关，启动地图动画
+                if (levelNumber === 5) {
+                    startMapAnimation();
+                }
+                
+                // 解锁对应戒指碎片
+                unlockRingPiece(levelNumber);
+            }
+        }
+        
+        // 进入下一关
+        function goToNextLevel() {
+            if (currentLevel < totalLevels) {
+                currentLevel++;
+                showLevel(currentLevel);
+                updateProgress();
+                saveProgress();
+            }
+        }
+        
+        // 更新进度条
+        function updateProgress() {
+            const progress = (currentLevel / totalLevels) * 100;
+            progressBar.style.width = `${progress}%`;
+        }
+        
+        // 保存进度到本地存储
+        function saveProgress() {
+            localStorage.setItem('confessionLevel', currentLevel.toString());
+        }
+        
+        // 切换背景音乐
+        function toggleMusic() {
+            if (backgroundMusic.paused) {
+                backgroundMusic.play();
+                musicToggle.innerHTML = '<i class="fa fa-volume-up text-xl"></i>';
+            } else {
+                backgroundMusic.pause();
+                musicToggle.innerHTML = '<i class="fa fa-volume-off text-xl"></i>';
+            }
+        }
+        
+        // 播放对话录音（隐藏彩蛋）
+        function playDialogAudio() {
+            // 这里应该是实际的录音URL，这里使用示例音频
+            dialogAudio.src = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3";
+            dialogAudio.play().catch(e => console.log("播放录音失败"));
+        }
+        
+        // 生成浮动的猫狗动画
+        function generateFloatingAnimals() {
+            const container = document.getElementById('floatingAnimals');
+            const animals = ['🐱', '🐶', '🐾', '😺', '🐕'];
+            const count = 8; // 生成8个浮动元素
+            
+            for (let i = 0; i < count; i++) {
+                const animal = document.createElement('div');
+                const randomAnimal = animals[Math.floor(Math.random() * animals.length)];
+                const size = Math.floor(Math.random() * 20) + 20; // 20-40px
+                const left = Math.floor(Math.random() * 100); // 0-100%
+                const top = Math.floor(Math.random() * 100); // 0-100%
+                const delay = Math.random() * 5; // 0-5s延迟
+                const duration = Math.floor(Math.random() * 4) + 4; // 4-8s周期
+                
+                animal.textContent = randomAnimal;
+                animal.style.fontSize = `${size}px`;
+                animal.style.left = `${left}%`;
+                animal.style.top = `${top}%`;
+                animal.style.position = 'absolute';
+                animal.style.animation = `float ${duration}s ease-in-out ${delay}s infinite`;
+                animal.style.opacity = '0.7';
+                animal.style.zIndex = '1';
+                
+                container.appendChild(animal);
+            }
+        }
+        
+        // 发射烟花
+        function launchFireworks() {
+            launchFireworksBtn.classList.add('hidden');
+            
+            // 连续发射多个烟花
+            const fireworkCount = 15;
+            for (let i = 0; i < fireworkCount; i++) {
+                setTimeout(() => {
+                    createFirework();
+                }, i * 500);
+            }
+            
+            // 烟花结束后显示下一关按钮
+            setTimeout(() => {
+                document.querySelector('#level10 .nextLevelBtn').classList.remove('hidden');
+            }, fireworkCount * 500 + 1000);
+        }
+        
+        // 创建单个烟花
+        function createFirework() {
+            const firework = document.createElement('div');
+            const size = Math.floor(Math.random() * 100) + 50; // 50-150px
+            const left = Math.floor(Math.random() * 80) + 10; // 10-90%
+            const top = Math.floor(Math.random() * 60) + 20; // 20-80%
+            
+            // 随机颜色
+            const colors = ['#E94560', '#FFD700', '#4CC9F0', '#4361EE', '#F72585', '#4CC9F0'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            firework.classList.add('firework');
+            firework.style.width = `${size}px`;
+            firework.style.height = `${size}px`;
+            firework.style.left = `${left}%`;
+            firework.style.top = `${top}%`;
+            firework.style.backgroundColor = color;
+            
+            fireworksContainer.appendChild(firework);
+            
+            // 移除烟花元素
+            setTimeout(() => {
+                firework.remove();
+            }, 1000);
+        }
+        
+        // 检查日期输入
+        function checkDateInput() {
+            if (dateInput.value === correctDate) {
+                dateInput.disabled = true;
+                dateInput.classList.add('bg-dark/50', 'border-accent');
+                showCountdown();
+            } else if (dateInput.value.length === 8) {
+                dateError.classList.remove('hidden');
+                setTimeout(() => {
+                    dateError.classList.add('hidden');
+                }, 2000);
+            }
+        }
+        
+        // 显示倒计时动画
+        function showCountdown() {
+            countdown.classList.remove('hidden');
+            
+            let count = 3;
+            countdownNumber.textContent = count;
+            
+            const countdownInterval = setInterval(() => {
+                count--;
+                countdownNumber.textContent = count;
+                
+                if (count === 0) {
+                    clearInterval(countdownInterval);
+                    setTimeout(() => {
+                        countdown.classList.add('hidden');
+                        document.querySelector('#level12 .nextLevelBtn').classList.remove('hidden');
+                    }, 500);
+                }
+            }, 1000);
+        }
+        
+        // 转动命运转盘
+        function spinWheel() {
+            spinBtn.disabled = true;
+            spinBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            
+            // 计算旋转角度 - 确保最终指向戒指
+            // 戒指在右侧，大约需要旋转 225 + 360 * n 度
+            const baseAngle = 225;
+            const fullRotations = 5; // 5圈
+            const totalAngle = baseAngle + (fullRotations * 360);
+            
+            // 应用旋转
+            wheel.style.transform = `rotate(${totalAngle}deg)`;
+            
+            // 旋转结束后显示结果
+            setTimeout(() => {
+                ringResult.classList.remove('hidden');
+                document.querySelector('#level13 .nextLevelBtn').classList.remove('hidden');
+            }, 5000);
+        }
+        
+        // 显示最终表白内容
+        function showFinalConfession() {
+            confession1.classList.add('hidden');
+            confession2.classList.remove('hidden');
+            
+            // 播放背景音乐高潮部分（这里只是象征性的）
+            backgroundMusic.volume = 0.8;
+        }
+        
+        // 解锁戒指碎片
+        function unlockRingPiece(level) {
+            const piece = document.getElementById(`ringPiece${Math.min(level, 3)}`);
+            if (piece) {
+                piece.classList.add('visible');
+            }
+        }
+        
+        // 启动地图动画
+        function startMapAnimation() {
+            // 显示移动的点
+            travelPoint.classList.remove('hidden');
+            
+            // 动画路径 - 广州到赣州
+            let position = 0;
+            const path = {
+                start: { x: 200, y: 150 },
+                end: { x: 600, y: 250 }
+            };
+            
+            const animationInterval = setInterval(() => {
+                position += 0.01;
+                if (position > 1) {
+                    position = 1;
+                    clearInterval(animationInterval);
+                    mapMessage.classList.remove('hidden');
+                }
+                
+                // 计算贝塞尔曲线上的点
+                const t = position;
+                const cx = 400;
+                const cy = 50;
+                
+                // 二次贝塞尔曲线公式
+                const x = (1 - t) * (1 - t) * path.start.x + 2 * (1 - t) * t * cx + t * t * path.end.x;
+                const y = (1 - t) * (1 - t) * path.start.y + 2 * (1 - t) * t * cy + t * t * path.end.y;
+                
+                travelPoint.setAttribute('cx', x);
+                travelPoint.setAttribute('cy', y);
+            }, 30);
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
